@@ -1,3 +1,4 @@
 hosts.d/target_hosts
 .vscode
 __pycache__
+config.py

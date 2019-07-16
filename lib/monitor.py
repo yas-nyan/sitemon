@@ -18,10 +18,10 @@ class Monitor:
     AVAILABLE_TYPES = ("ping", "ping6", "fping", "http")
 
     def __init__(self, parameters):
-        # parameters:  name, monitor_type = "ping", target = ""
-
         self.name = parameters["name"]
         self.target = parameters["target"]
+        self.status = True  # initial value is True
+        self.id = id(self)
 
         if parameters["monitor_type"] in self.AVAILABLE_TYPES:
             self.monitor_type = parameters["monitor_type"]
@@ -62,7 +62,7 @@ class Monitor:
 
         if usefping is True:
             ping_func = "fping"
-            options = ""
+            options = "-q"
         else:
             ping_func = "ping6" if isv6 else "ping"
             options = "-i 0.2 -c 3"
