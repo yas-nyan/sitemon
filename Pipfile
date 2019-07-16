@@ -13,3 +13,6 @@ python-hosts = "*"
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+sitemon = "python sitemon.py"
