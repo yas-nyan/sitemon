@@ -34,7 +34,7 @@ class Monitor:
             if addr_type is 4:
                 status = self.isPingOK()
             elif addr_type is 6:
-                status = self.isPingOK(ipv6=True)
+                status = self.isPingOK(isv6=True)
             else:
                 # domain name not implemented
                 raise NotImplementedError("domain name is  not implemented")
