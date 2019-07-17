@@ -5,6 +5,7 @@ from config import *
 from python_hosts.hosts import Hosts, HostsEntry
 import time
 from datetime import datetime
+import yaml
 
 
 def nextCycle(monitor):
@@ -29,19 +30,35 @@ def changedEvent(result):
 
 
 if __name__ == "__main__":
-
-    hosts = Hosts(path=HOST_FILE_PATH).entries
+    hosts = []
+    with open(HOST_FILE_PATH, "r") as f:
+        '''
+        - monitor_targets:
+            ipv4: 8.8.8.8
+            ipv6: 2001:4860:4860::8888
+        name: googleDNS
+        '''
+        hosts = yaml.safe_load(f)
 
     # マルチプロス用の引数群
     parameters = []
 
     for host in hosts:
-        parameter = {
-            "name": host.names[0],
-            "target": host.address,
-            "monitor_type": "fping" if USE_FPING else "ping"
-        }
-        parameters.append(parameter)
+        name = host["name"]
+        for target_key, target_value in host["monitor_targets"].items():
+            # 種別ごとにパラメーターに追加する。
+            monitor_type = ""
+            if target_key in ("ipv4", "ipv6"):
+                monitor_type = "fping" if USE_FPING else "ping"
+            else:
+                monitor_type = target_key
+
+            parameter = {
+                "name": name,
+                "target": target_value,
+                "monitor_type": monitor_type
+            }
+            parameters.append(parameter)
 
     # generate monitors
     monitors = [Monitor(parameter) for parameter in parameters]
@@ -52,7 +69,8 @@ if __name__ == "__main__":
         privious_status[str(monitor.id)] = monitor.status
 
     while True:
-        print(f'[{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}] Cycle start')
+        print(
+            f'[{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}] Cycle start monitor_count: {len(parameters)}')
 
         with Pool(PROCESS_POOL) as pool:
             all_result = []
