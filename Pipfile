@@ -10,6 +10,9 @@ autopep8 = "*"
 [packages]
 requests = "*"
 python-hosts = "*"
+pyyaml = "*"
+dnspython3 = "*"
+dnspython = "*"
 
 [requires]
 python_version = "3.7"
