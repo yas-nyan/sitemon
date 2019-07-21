@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     while True:
         print(
-            f'[{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}] Cycle start monitor_count: {len(parameters)}')
+            f'[{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}] Cycle start monitortargets: {len(parameters)} host')
 
         with Pool(PROCESS_POOL) as pool:
             all_result = []
