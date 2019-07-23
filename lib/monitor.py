@@ -1,6 +1,7 @@
 import subprocess
 import ipaddress
 import os
+import requests
 
 
 class Monitor:
@@ -19,7 +20,6 @@ class Monitor:
 
     def __init__(self, parameters):
         self.name = parameters["name"]
-        self.target = parameters["target"]
         self.status = True  # initial value is True
         self.id = id(self)
 
@@ -27,6 +27,12 @@ class Monitor:
             self.monitor_type = parameters["monitor_type"]
         else:
             raise ValueError(f"monitor type : {self.AVAILABLE_TYPES}")
+
+        # add http://
+        if self.monitor_type == "http" and not self.isValidHTTPURL(parameters["target"]):
+            self.target = "http://" + parameters["target"]
+        else:
+            self.target = parameters["target"]
 
     def cycle(self):
         if self.monitor_type == "ping":
@@ -37,15 +43,17 @@ class Monitor:
                 status = self.isPingOK(isv6=True)
             else:
                 # domain name not implemented
-                raise NotImplementedError("domain name is  not implemented")
+                raise NotImplementedError(
+                    "domain name resolve is not implemented")
         elif self.monitor_type == "fping":
             status = self.isPingOK(usefping=True)
-        else:
-            # HTTP not implemented
-            raise NotImplementedError("HTTP is not implemented")
+        elif self.monitor_type == "http":
+            # http://が頭についてない場合つける
+            status = self.isHTTPOK()
 
         self.status = status
 
+        print(f"monitor.cycle: {self.name} ")
         return self.__dict__
         '''
         self.__dict__ -> {
@@ -72,6 +80,11 @@ class Monitor:
 
         return True if response == 0 else False
 
+    def isHTTPOK(self):
+        with requests.Session() as s:
+            response = s.get(self.target)
+        return response.status_code == requests.codes.ok
+
     @classmethod
     def whichIPAddr(cls, target):
         try:
@@ -82,3 +95,7 @@ class Monitor:
             return False
 
         return False
+
+    @classmethod
+    def isValidHTTPURL(cls, url):
+        return url.startswith("http://") or url.startswith("https://")
