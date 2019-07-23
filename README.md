@@ -1,5 +1,13 @@
 # sitemon
 
+## before starting
+### For mac users
+- please ensure ```OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES```
+```
+env | grep OBJC
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
+
 ## target file format
 ```
 - monitor_targets:
@@ -9,6 +17,7 @@
 - monitor_targets:
     ipv4: 1.1.1.1
     ipv6: 2606:4700:4700::1111
+    http: https://one.one.one.one
   name: cloudflare
 ```
 

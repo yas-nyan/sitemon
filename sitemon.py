@@ -1,6 +1,6 @@
 from lib.monitor import Monitor
 from lib.slack import Slack
-from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool as Pool
 from config import *
 from python_hosts.hosts import Hosts, HostsEntry
 import time
