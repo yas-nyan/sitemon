@@ -2,6 +2,7 @@ import subprocess
 import ipaddress
 import os
 import requests
+from requests.exceptions import ConnectionError
 
 
 class Monitor:
@@ -81,8 +82,11 @@ class Monitor:
 
     def isHTTPOK(self):
         with requests.Session() as s:
-            response = s.get(self.target)
-        return response.status_code == requests.codes.ok
+            try:
+                response = s.get(self.target)
+                return response.status_code == requests.codes.ok
+            except ConnectionError:
+                return False
 
     @classmethod
     def whichIPAddr(cls, target):
