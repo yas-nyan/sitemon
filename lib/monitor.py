@@ -53,7 +53,6 @@ class Monitor:
 
         self.status = status
 
-        print(f"monitor.cycle: {self.name} ")
         return self.__dict__
         '''
         self.__dict__ -> {
