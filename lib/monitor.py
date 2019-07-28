@@ -70,10 +70,10 @@ class Monitor:
 
         if usefping is True:
             ping_func = "fping"
-            options = "-q"
+            options = "-q -i 0.2 -r 10"
         else:
             ping_func = "ping6" if isv6 else "ping"
-            options = "-i 0.2 -c 3"
+            options = "-i 0.2 -c 10"
 
         response = subprocess.call(
             f"{ping_func} {options} {self.target}", shell=True, stdout=open(os.devnull, 'wb'))
