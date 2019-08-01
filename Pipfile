@@ -13,6 +13,7 @@ python-hosts = "*"
 pyyaml = "*"
 dnspython3 = "*"
 dnspython = "*"
+pyopenssl = "*"
 
 [requires]
 python_version = "3.7"

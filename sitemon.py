@@ -56,8 +56,10 @@ if __name__ == "__main__":
             parameter = {
                 "name": name,
                 "target": target_value,
-                "monitor_type": monitor_type
+                "monitor_type": monitor_type,
+                "TLS_CERT_EXPIRATION_DATES": TLS_CERT_EXPIRATION_DATES if "TLS_CERT_EXPIRATION_DATES" in globals() else 7  # default 7 days
             }
+
             parameters.append(parameter)
 
     # generate monitors
