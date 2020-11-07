@@ -45,7 +45,7 @@ class Monitor:
         elif self.monitor_type == "tls":
             # TLS
             _splited = parameters["target"].split(":")  # ["example.com","443"]
-            if not self.isValidPort(_splited[1]) or len(_splited) is not 2:
+            if not self.isValidPort(_splited[1]) or len(_splited) != 2:
                 raise ValueError(
                     f"tls target is invalid: {parameters['target']}")
 
@@ -60,9 +60,9 @@ class Monitor:
     def cycle(self):
         if self.monitor_type == "ping":
             addr_type = self.whichIPAddr(self.target)
-            if addr_type is 4:
+            if addr_type ==  4:
                 status = self.isPingOK()
-            elif addr_type is 6:
+            elif addr_type == 6:
                 status = self.isPingOK(isv6=True)
             else:
                 # domain name not implemented
