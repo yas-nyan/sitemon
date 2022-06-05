@@ -1,0 +1,9 @@
+version: "3"
+services:
+  sitemon:
+    build: .
+    volumes:
+      - ./hosts.d:/app/hosts.d
+      - ${PWD}/config.py:/app/config.py
+    command: ["pipenv","run","sitemon"]
+    network_mode: host
