@@ -10,6 +10,8 @@ from datetime import datetime
 from slack_sdk.webhook import WebhookClient
 from slack_sdk.models.attachments import Attachment
 from logzero import logger
+import logzero
+import os
 
 
 RETRY_COUNT = 3
@@ -75,9 +77,13 @@ def slackNotification(result,slack_webhook):
     if response.status_code != 200 :
         logger.warning(f"Slack webhook send failed. status: {response.status_code} body: {response.body}")
     else:
-        logger.debug("slack notification send.")
+        logger.info("slack notification send.")
 
 if __name__ == "__main__":
+    if "SITEMON_DEBUG" in  os.environ: 
+        logzero.loglevel(logzero.DEBUG)
+    else:
+        logzero.loglevel(logzero.INFO)
     # parse args
     parser = argparse.ArgumentParser("sitemon options")
     parser.add_argument("config", help="configuration file path")
@@ -100,7 +106,6 @@ if __name__ == "__main__":
     # set initial status
     for target in targets:
         target["lastStatus"]  = True
-    print(targets)
     while True:
         logger.info(f"Sitemon cycle start. count: {len(targets)}")
         with Pool(PROCESS_POOL) as pool:
