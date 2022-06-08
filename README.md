@@ -11,6 +11,13 @@ OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 ## config gile format
 ```yaml
+options:
+  timeoutSeconds:  1
+  intervalSeconds: 0.2
+  retryCount: 5
+  dnsSearchDomain: "example.com"
+  processPoolCount: 16
+  sleepTimeSeconds: 5
 slack: 
   url: URLURLURL
 targets:

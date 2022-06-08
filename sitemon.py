@@ -3,6 +3,8 @@ import argparse
 from copy import copy
 from multiprocessing.pool import ThreadPool as Pool
 import subprocess
+from tkinter import COMMAND
+from typing import Any
 from unittest import result
 import yaml
 import time
@@ -14,19 +16,15 @@ import logzero
 import os
 
 
-RETRY_COUNT = 3
-TIMEOUT_SECONDS = 1
-INTERVAL_SECONDS = 0.2
-EXAMPLE_DOMAIN = "example.com"
-PROCESS_POOL = 16
-SLEEP_TIME = 5
-
-CMD_OPTIONS = {
-    # last character must be space or @
-    "http": f"curl --connect-timeout {TIMEOUT_SECONDS} -I ",
-    "icmp": f"fping -q -i {INTERVAL_SECONDS} -r {RETRY_COUNT} ",
-    "dns": f"dig +time={TIMEOUT_SECONDS} +tries={RETRY_COUNT}  {EXAMPLE_DOMAIN} @"
+DEFAULT = {
+    "timeoutSeconds": 1,
+    "intervalSecond": 0.2,
+    "retryCount": 3,
+    "dnsSearchDomain": "example.com",
+    "processPoolCount": 16,
+    "sleepTimeSeconds": 5
 }
+COMMANDS = {}
 
 
 
@@ -45,7 +43,7 @@ def check(target: dict) -> dict:
         "name": "example",
         "value": "example.com",
         "type: "icmp",
-        "lastStatus": bool
+        "lastStatus": bool,
     }
     result = {
         "name": "example",
@@ -56,10 +54,10 @@ def check(target: dict) -> dict:
     }
 
     '''
-    if not target["type"] in CMD_OPTIONS.keys():
+    if not target["type"] in COMMANDS.keys():
         raise NotImplementedError(f'{target["type"]} is not implemented')
     result = copy(target)
-    cmd = f'{CMD_OPTIONS[target["type"]]}{target["value"]}'
+    cmd = f'{COMMANDS[target["type"]]}{target["value"]}'
 
     result["status"] = localExcute(cmd)
 
@@ -79,6 +77,22 @@ def slackNotification(result,slack_webhook):
     else:
         logger.info("slack notification send.")
 
+
+def getFullOptions(options: dict={}):
+
+    outputOptions = {}
+    for key, value in DEFAULT.items(): 
+        if key in options.keys():
+            # user selected value
+            outputOptions[key] = options[key]
+        else:
+            outputOptions[key] = value
+    
+    return outputOptions
+    
+    
+
+
 if __name__ == "__main__":
     if "SITEMON_DEBUG" in  os.environ: 
         logzero.loglevel(logzero.DEBUG)
@@ -92,6 +106,22 @@ if __name__ == "__main__":
     config = None
     with open(args.config, "r") as f:
         config = yaml.safe_load(f)
+    
+    if "options" in config.keys():
+        options = getFullOptions(options=config["options"])
+    else:
+        options = getFullOptions()
+
+    COMMANDS = {
+        # last character must be space or @
+        "http": f"curl --connect-timeout {options['timeoutSeconds']} -I ",
+        "icmp": f"fping -q -i {options['intervalSecond']} -r {options['retryCount']}  -t {options['timeoutSeconds']} ",
+        "dns": f"dig +time={options['timeoutSeconds']} +tries={options['retryCount']}  {options['dnsSearchDomain']} @"
+    }
+
+    logger.debug("Full command")
+    logger.debug(COMMANDS)
+
 
     # set slack
     try:
@@ -108,7 +138,7 @@ if __name__ == "__main__":
         target["lastStatus"]  = True
     while True:
         logger.info(f"Sitemon cycle start. count: {len(targets)}")
-        with Pool(PROCESS_POOL) as pool:
+        with Pool(options["processPoolCount"]) as pool:
             all_result = []
             # monitorsは各プロセス用にハードコピーされる。そのためchangedは更新されるはずがない。
             for result in pool.imap_unordered(check, targets):
@@ -128,5 +158,5 @@ if __name__ == "__main__":
                 result.pop("status")
         # 次のtargetsを更新
         targets = all_result
-        if SLEEP_TIME > 0:
-            time.sleep(SLEEP_TIME)
+        if options["sleepTimeSeconds"] > 0:
+            time.sleep(options["sleepTimeSeconds"])
