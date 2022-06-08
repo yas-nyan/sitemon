@@ -3,8 +3,6 @@ import argparse
 from copy import copy
 from multiprocessing.pool import ThreadPool as Pool
 import subprocess
-from tkinter import COMMAND
-from typing import Any
 from unittest import result
 import yaml
 import time
