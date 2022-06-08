@@ -1,34 +1,38 @@
 import yaml
-from ..lib.monitor import Monitor
-from ..lib.dig import dig
-from python_hosts.hosts import Hosts, HostsEntry
+import argparse
 
 
-'''
-loaded_hosts = {}
 
-with open("hosts.d/hosts.yml", "r") as f:
-    loaded_hosts = yaml.safe_load(f)
+if __name__  == "__main__":
+    # parse args
+    parser = argparse.ArgumentParser("sitemon options")
+    parser.add_argument("hostsPath", help="source hosts file")
+    parser.add_argument("destPath", help="dest yaml file")
+    args = parser.parse_args()
 
-print(loaded_hosts)
-
-'''
-
-hosts = Hosts(path="hosts.d/target_hosts").entries
-
-yaml_hosts = []
-
-for host in hosts:
-    ipv6 = dig.getv6(dig.getPTR(host.address))
-    record = {
-        "name": host.names[0],
-        "monitor_targets": {
-            'ipv4': host.address
-        }
+    hosts = []
+    with open(args.hostsPath, "r") as f:
+        for line in  f.readlines():
+            
+            # コメントがあったらそれ以降を切る
+            if "#" in line:
+                commentOutIndex = line.index("#")
+                line = line[:commentOutIndex]
+            words = line.split()
+            if len(words) < 2: 
+                continue
+            host = {
+                "name": words[1].strip(),
+                "value": words[0].strip(),
+                "type": "icmp"
+            }
+            hosts.append(host)
+    resultDict = {
+        "slack": {
+            "url": "CHANGEME"
+        },
+        "targets": hosts
     }
-    if ipv6 is not None:
-        record["monitor_targets"]['ipv6'] = ipv6
+    with open(args.destPath, "w")  as f:
+        yaml.dump(resultDict, f)
 
-    yaml_hosts.append(record)
-with open("hosts.d/hosts.yml", "w") as f:
-    f.write(yaml.dump(yaml_hosts))

@@ -3,7 +3,6 @@ services:
   sitemon:
     build: .
     volumes:
-      - ./hosts.d:/app/hosts.d
-      - ${PWD}/config.py:/app/config.py
-    command: ["pipenv","run","sitemon"]
+      - ${PWD}/config.yml:/app/config.yml
+    command: ["python3","sitemon.py", "config.yml"]
     network_mode: host
