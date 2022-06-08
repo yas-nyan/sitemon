@@ -1,0 +1,15 @@
+slack: 
+  url: URLURLURL
+targets:
+- name: example
+  value: example.com
+  type: http
+- name: example-ip
+  value: example.com
+  type: icmp
+- name: down host
+  value: 2001:db8::1
+  type: icmp
+- name: GoogleDNS
+  value: 2001:4860:4860::8888
+  type: dns

@@ -1,4 +1,4 @@
-hosts.d
 .vscode
+.venv
 __pycache__
-config.py
+config.yml

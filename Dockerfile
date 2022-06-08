@@ -1,15 +1,14 @@
-FROM python:3.7-bullseye
+FROM python:3.9-slim-bullseye
 
-RUN apt-get update && apt-get -y install fping
-ENV PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get -y install fping curl dnsutils
+
 WORKDIR /app
-RUN pip install pipenv
-COPY Pipfile /app/
-COPY Pipfile.lock /app/
+RUN pip install poetry
+COPY pyproject.toml /app/
+COPY poetry.lock /app/
+RUN poetry config virtualenvs.create false \
+  && poetry install
 
-RUN pipenv install
-
-COPY lib /app/lib
 COPY sitemon.py /app/
 
-CMD ["pipenv","run","sitemon"]
+CMD ["python3","sitemon.py"]

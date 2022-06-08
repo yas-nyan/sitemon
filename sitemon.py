@@ -1,89 +1,127 @@
-from lib.monitor import Monitor
-from lib.slack import Slack
+# import yaml
+import argparse
+from copy import copy
 from multiprocessing.pool import ThreadPool as Pool
-from config import *
-from python_hosts.hosts import Hosts, HostsEntry
+import subprocess
+from unittest import result
+import yaml
 import time
 from datetime import datetime
-import yaml
+from slack_sdk.webhook import WebhookClient
+from slack_sdk.models.attachments import Attachment
+from logzero import logger
 
 
-def nextCycle(monitor):
-    return monitor.cycle()
+RETRY_COUNT = 3
+TIMEOUT_SECONDS = 1
+INTERVAL_SECONDS = 0.2
+EXAMPLE_DOMAIN = "example.com"
+PROCESS_POOL = 16
+SLEEP_TIME = 5
+
+CMD_OPTIONS = {
+    # last character must be space or @
+    "http": f"curl --connect-timeout {TIMEOUT_SECONDS} -I ",
+    "icmp": f"fping -q -i {INTERVAL_SECONDS} -r {RETRY_COUNT} ",
+    "dns": f"dig +time={TIMEOUT_SECONDS} +tries={RETRY_COUNT}  {EXAMPLE_DOMAIN} @"
+}
 
 
-def slackNotification(slack, result):
-    username = SLACK_USERNAME
-    icon = SLACK_SUCCESS_ICON if result["status"] else SLACK_FAILED_ICON
+
+def localExcute(command: str) -> bool:
+    try: 
+        logger.debug(command)
+        subprocess.run(command, shell=True, check=True,stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception as e:
+        logger.debug(e)
+        return False
+
+def check(target: dict) -> dict: 
+    '''
+    target = {
+        "name": "example",
+        "value": "example.com",
+        "type: "icmp",
+        "lastStatus": bool
+    }
+    result = {
+        "name": "example",
+        "value": "example.com",
+        "type: "icmp",
+        "lastStatus": bool,
+        "status": bool
+    }
+
+    '''
+    if not target["type"] in CMD_OPTIONS.keys():
+        raise NotImplementedError(f'{target["type"]} is not implemented')
+    result = copy(target)
+    cmd = f'{CMD_OPTIONS[target["type"]]}{target["value"]}'
+
+    result["status"] = localExcute(cmd)
+
+    return result
+
+def slackNotification(result,slack_webhook):
     now_string = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    text = f"[{now_string}] STATE CHANGED: {result['name']} \n Monitor target: {result['target']} ({result['monitor_type']})\n current state: {'up' if result['status'] else 'down' }"
+    title = f'Sitemon detected: "{result["name"]}" is {"UP" if result["status"] else "DOWN"}'
+    text = f"Name: {result['name']} \n {result['value']} ({result['type']})\n current state: {'UP' if result['status'] else 'DOWN' }"
+    color = "good" if result["status"] else "danger"
 
-    slack.notify(text=text, icon_emoji=icon, username=username)
+    attachment = Attachment(text=text,color=color,footer=now_string,title=title)
 
-
-def changedEvent(result):
-    # slack notification
-    if 'SLACK_URL' in globals():
-        slack = Slack(url=SLACK_URL)
-        slackNotification(slack, result)
-    print(f"CHANGED: {result['name']}  {result['target']}")
-
+    response = slack_webhook.send(attachments=[attachment])
+    if response.status_code != 200 :
+        logger.warning(f"Slack webhook send failed. status: {response.status_code} body: {response.body}")
+    else:
+        logger.debug("slack notification send.")
 
 if __name__ == "__main__":
-    hosts = []
-    with open(HOST_FILE_PATH, "r") as f:
-        '''
-        - monitor_targets:
-            ipv4: 8.8.8.8
-            ipv6: 2001:4860:4860::8888
-        name: googleDNS
-        '''
-        hosts = yaml.safe_load(f)
+    # parse args
+    parser = argparse.ArgumentParser("sitemon options")
+    parser.add_argument("config", help="configuration file path")
+    args = parser.parse_args()
 
-    # マルチプロス用の引数群
-    parameters = []
+    config = None
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f)
 
-    for host in hosts:
-        name = host["name"]
-        for target_key, target_value in host["monitor_targets"].items():
-            # 種別ごとにパラメーターに追加する。
-            monitor_type = ""
-            if target_key in ("ipv4", "ipv6"):
-                monitor_type = "fping" if USE_FPING else "ping"
-            else:
-                monitor_type = target_key
+    # set slack
+    try:
+        webhook = WebhookClient(config["slack"]["url"])
+    except Exception as e:
+        logger.info("slack disabled. continue")
+        webhook = None
+    # set sleep time
+    
+    targets = copy(config["targets"])
 
-            parameter = {
-                "name": name,
-                "target": target_value,
-                "monitor_type": monitor_type,
-                "TLS_CERT_EXPIRATION_DATES": TLS_CERT_EXPIRATION_DATES if "TLS_CERT_EXPIRATION_DATES" in globals() else 7  # default 7 days
-            }
-
-            parameters.append(parameter)
-
-    # generate monitors
-    monitors = [Monitor(parameter) for parameter in parameters]
-
-    # status chache table
-    privious_status = {}
-    for monitor in monitors:
-        privious_status[str(monitor.id)] = monitor.status
-
+    # set initial status
+    for target in targets:
+        target["lastStatus"]  = True
+    print(targets)
     while True:
-        print(
-            f'[{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}] Cycle start monitortargets: {len(parameters)} host')
-
+        logger.info(f"Sitemon cycle start. count: {len(targets)}")
         with Pool(PROCESS_POOL) as pool:
             all_result = []
             # monitorsは各プロセス用にハードコピーされる。そのためchangedは更新されるはずがない。
-            for result in pool.imap_unordered(nextCycle, monitors):
-                # 前回のステータスと比較して
-                if result["status"] != privious_status[str(result["id"])]:
-                    changedEvent(result)
+            for result in pool.imap_unordered(check, targets):
+                all_result.append(result)
+            
+            # changed check
+            for result in all_result:
+                # 前回のステータスと比較
+                if result["status"] != result["lastStatus"]:
+                    logger.info(f"[CHANGED] name:{result['name']}  value:{result['value']} type:{result['type']}")
+                    if webhook is not None:
+                        slackNotification(result,webhook)
 
                 # ステータス更新
-                privious_status[str(result["id"])] = result["status"]
-
+                result["lastStatus"] = result["status"]
+                # 今回のステータス削除
+                result.pop("status")
+        # 次のtargetsを更新
+        targets = all_result
         if SLEEP_TIME > 0:
             time.sleep(SLEEP_TIME)

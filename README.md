@@ -1,4 +1,5 @@
 # sitemon
+Simple and multithread monitoring deamon with python
 
 ## before starting
 ### For mac users
@@ -8,37 +9,42 @@ env | grep OBJC
 OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ```
 
-## target file format
+## config gile format
+```yaml
+slack: 
+  url: URLURLURL
+targets:
+- name: example
+  value: example.com
+  type: http
+- name: example-ip
+  value: example.com
+  type: icmp
+- name: down host
+  value: 2001:db8::1
+  type: icmp
+- name: GoogleDNS
+  value: 2001:4860:4860::8888
+  type: dns
 ```
-- monitor_targets:
-    ipv4: 8.8.8.8
-    ipv6: 2001:4860:4860::8888
-  name: googleDNS
-- monitor_targets:
-    ipv4: 1.1.1.1
-    ipv6: 2606:4700:4700::1111
-    http: https://one.one.one.one
-  name: cloudflare
+
+tips: `etc_hosts_to_yaml.py` can convert hosts file to config format.
+
+
+## install and start
+### local
+
+```
+poetry install
 ```
 
-## config.py
 ```
-HOST_FILE_PATH = "hosts.d/hosts.yml"
-PROCESS_POOL = 16
+python3 
+```
 
-USE_FPING = True
-SLEEP_TIME = 5  # seconds
-
-
-# For slack notification
-# SLACK_URL = ""
-# SLACK_USERNAME = "GENBA Cat"
-# SLACK_FAILED_ICON = ":genbaneko_moving:"
-# SLACK_SUCCESS_ICON = ":genbaneko:"
+### docker
+```
+docker compose up -d
 ```
 
 ## start
-```
-pipenv install
-pipenv run sitemon
-```
